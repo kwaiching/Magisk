@@ -26,9 +26,10 @@ void FirstStageInit::prepare() {
         xmkdirs(FSR "/system/bin", 0755);
         rename("/init" /* magiskinit */, FSR "/system/bin/init");
         symlink("/system/bin/init", FSR "/init");
+        rename("/.backup/init", "/init");
+
         rename("/.backup", FSR "/.backup");
         rename("/overlay.d", FSR "/overlay.d");
-        xsymlink("/system/bin/init", "/init");
 
         chdir(FSR);
     } else {
@@ -199,7 +200,7 @@ void SARInit::first_stage_prep() {
         restore_folder(ROOTOVL, overlays);
 
         // Ack and bail out!
-        write_int(sockfd, 0);
+        write_int(client, 0);
         close(client);
         close(sockfd);
 

@@ -21,6 +21,7 @@ import com.topjohnwu.magisk.data.database.RepoDao
 import com.topjohnwu.magisk.events.AddHomeIconEvent
 import com.topjohnwu.magisk.events.RecreateEvent
 import com.topjohnwu.magisk.events.dialog.BiometricEvent
+import com.topjohnwu.magisk.ktx.activity
 import com.topjohnwu.magisk.utils.Utils
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.launch
@@ -54,13 +55,17 @@ class SettingsViewModel(
 
         // Manager
         list.addAll(listOf(
-            Manager,
+            AppSettings,
             UpdateChannel, UpdateChannelUrl, DoHToggle, UpdateChecker, DownloadPath
         ))
         if (Info.env.isActive) {
             list.add(ClearRepoCache)
-            if (Const.USER_ID == 0 && Info.isConnected.get())
-                list.add(if (hidden) Restore else Hide)
+            if (Build.VERSION.SDK_INT >= 21 && Const.USER_ID == 0) {
+                if (hidden)
+                    list.add(Restore)
+                else if (Info.isConnected.get())
+                    list.add(Hide)
+            }
         }
 
         // Magisk
@@ -101,16 +106,18 @@ class SettingsViewModel(
         is Theme -> SettingsFragmentDirections.actionSettingsFragmentToThemeFragment().publish()
         is ClearRepoCache -> clearRepoCache()
         is SystemlessHosts -> createHosts()
-        is Restore -> HideAPK.restore(view.context)
+        is Restore -> HideAPK.restore(view.activity)
         is AddShortcut -> AddHomeIconEvent().publish()
         else -> callback()
     }
 
-    override fun onItemChanged(view: View, item: BaseSettingsItem) = when (item) {
-        is Language -> RecreateEvent().publish()
-        is UpdateChannel -> openUrlIfNecessary(view)
-        is Hide -> HideAPK.hide(view.context, item.value)
-        else -> Unit
+    override fun onItemChanged(view: View, item: BaseSettingsItem) {
+        when (item) {
+            is Language -> RecreateEvent().publish()
+            is UpdateChannel -> openUrlIfNecessary(view)
+            is Hide -> viewModelScope.launch { HideAPK.hide(view.activity, item.value) }
+            else -> Unit
+        }
     }
 
     private fun openUrlIfNecessary(view: View) {

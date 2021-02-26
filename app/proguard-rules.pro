@@ -18,15 +18,9 @@
 
 # Kotlin
 -assumenosideeffects class kotlin.jvm.internal.Intrinsics {
-	public static void checkExpressionValueIsNotNull(...);
-	public static void checkNotNullExpressionValue(...);
-	public static void checkReturnedValueIsNotNull(...);
-	public static void checkFieldIsNotNull(...);
-	public static void checkParameterIsNotNull(...);
+	public static void check*(...);
+	public static void throw*(...);
 }
-
-# Stubs
--keep class a.* { *; }
 
 # Snet
 -keepclassmembers class com.topjohnwu.magisk.ui.safetynet.SafetyNetHelper { *; }
@@ -35,14 +29,17 @@
   void onResponse(org.json.JSONObject);
 }
 
+# Stub
+-keep class com.topjohnwu.magisk.core.App { <init>(java.lang.Object); }
+
 # Strip Timber verbose and debug logging
--assumenosideeffects class timber.log.Timber.Tree {
+-assumenosideeffects class timber.log.Timber$Tree {
   public void v(**);
   public void d(**);
 }
 
 # Excessive obfuscation
--repackageclasses
+-repackageclasses 'a'
 -allowaccessmodification
 
 # QOL

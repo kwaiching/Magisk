@@ -20,6 +20,8 @@ static int inotify_fd = -1;
 
 static void new_zygote(int pid);
 
+pthread_t monitor_thread;
+
 /******************
  * Data structures
  ******************/
@@ -211,6 +213,7 @@ static bool check_pid(int pid) {
         if (zit.second.st_ino == st.st_ino &&
             zit.second.st_dev == st.st_dev) {
             // ns not separated, abort
+            LOGW("proc_monitor: skip [%s] PID=[%d] UID=[%d]\n", cmdline, pid, uid);
             goto not_target;
         }
     }
@@ -280,6 +283,7 @@ void proc_monitor() {
     sigaddset(&block_set, SIGIO);
     sigaddset(&block_set, SIGALRM);
     pthread_sigmask(SIG_UNBLOCK, &block_set, nullptr);
+    monitor_thread = pthread_self();
 
     struct sigaction act{};
     act.sa_handler = term_thread;

@@ -61,10 +61,10 @@ object Theme : BaseSettingsItem.Blank() {
     override val title = R.string.section_theme.asTransitive()
 }
 
-// --- Manager
+// --- App
 
-object Manager : BaseSettingsItem.Section() {
-    override val title = R.string.manager.asTransitive()
+object AppSettings : BaseSettingsItem.Section() {
+    override val title = R.string.home_app_title.asTransitive()
 }
 
 object ClearRepoCache : BaseSettingsItem.Blank() {
@@ -77,8 +77,8 @@ object ClearRepoCache : BaseSettingsItem.Blank() {
 }
 
 object Hide : BaseSettingsItem.Input() {
-    override val title = R.string.settings_hide_manager_title.asTransitive()
-    override val description = R.string.settings_hide_manager_summary.asTransitive()
+    override val title = R.string.settings_hide_app_title.asTransitive()
+    override val description = R.string.settings_hide_app_summary.asTransitive()
 
     override var value = ""
         set(value) = setV(value, field, { field = it })
@@ -106,11 +106,8 @@ object Hide : BaseSettingsItem.Input() {
 }
 
 object Restore : BaseSettingsItem.Blank() {
-    override val title = R.string.settings_restore_manager_title.asTransitive()
-    override val description = R.string.settings_restore_manager_summary.asTransitive()
-    override fun refresh() {
-        isEnabled = Info.remote.app.versionCode > 0
-    }
+    override val title = R.string.settings_restore_app_title.asTransitive()
+    override val description = R.string.settings_restore_app_summary.asTransitive()
 }
 
 object AddShortcut : BaseSettingsItem.Blank() {
@@ -141,21 +138,28 @@ object DownloadPath : BaseSettingsItem.Input() {
 
 object UpdateChannel : BaseSettingsItem.Selector() {
     override var value = Config.updateChannel
-        set(value) = setV(value, field, { field = it }) { Config.updateChannel = it }
+        set(value) = setV(value, field, { field = it }) {
+            Config.updateChannel = it
+            Info.remote = Info.EMPTY_REMOTE
+        }
 
     override val title = R.string.settings_update_channel_title.asTransitive()
     override val entries: Array<String> = resources.getStringArray(R.array.update_channel).let {
-        if (BuildConfig.DEBUG) it.toMutableList().apply { add("Canary") }.toTypedArray() else it
+        if (BuildConfig.VERSION_CODE % 100 == 0)
+            it.toMutableList().apply { removeAt(Config.Value.CANARY_CHANNEL) }.toTypedArray()
+        else it
     }
     override val description
-        get() = entries.getOrNull(value)?.asTransitive()
-            ?: TransitiveText.String(if (value == -1) entries[0] else "Canary")
+        get() = entries.getOrNull(value)?.asTransitive() ?: TransitiveText.String(entries[0])
 }
 
 object UpdateChannelUrl : BaseSettingsItem.Input() {
     override val title = R.string.settings_update_custom.asTransitive()
     override var value = Config.customChannelUrl
-        set(value) = setV(value, field, { field = it }) { Config.customChannelUrl = it }
+        set(value) = setV(value, field, { field = it }) {
+            Config.customChannelUrl = it
+            Info.remote = Info.EMPTY_REMOTE
+        }
     override val description get() = value.asTransitive()
 
     override val inputResult get() = result
@@ -242,7 +246,7 @@ object MagiskHide : BaseSettingsItem.Toggle() {
     override var value = Config.magiskHide
         set(value) = setV(value, field, { field = it }) {
             val cmd = if (it) "enable" else "disable"
-            Shell.su("magiskhide --$cmd").submit { cb ->
+            Shell.su("magiskhide $cmd").submit { cb ->
                 if (cb.isSuccess) Config.magiskHide = it
                 else field = !it
             }

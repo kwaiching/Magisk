@@ -1,6 +1,5 @@
 package com.topjohnwu.magisk.ui.flash
 
-import android.net.Uri
 import android.view.MenuItem
 import androidx.databinding.Bindable
 import androidx.lifecycle.LiveData
@@ -12,6 +11,7 @@ import com.topjohnwu.magisk.arch.BaseViewModel
 import com.topjohnwu.magisk.arch.diffListOf
 import com.topjohnwu.magisk.arch.itemBindingOf
 import com.topjohnwu.magisk.core.Const
+import com.topjohnwu.magisk.core.Info
 import com.topjohnwu.magisk.core.tasks.FlashZip
 import com.topjohnwu.magisk.core.tasks.MagiskInstaller
 import com.topjohnwu.magisk.core.utils.MediaStoreUtils
@@ -26,9 +26,7 @@ import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class FlashViewModel(
-    args: FlashFragmentArgs
-) : BaseViewModel() {
+class FlashViewModel(private val args: FlashFragmentArgs) : BaseViewModel() {
 
     @get:Bindable
     var showReboot = Shell.rootAccess()
@@ -50,34 +48,33 @@ class FlashViewModel(
         }
     }
 
-    init {
-        args.dismissId.takeIf { it != -1 }?.also {
-            Notifications.mgr.cancel(it)
-        }
-        val (installer, action, uri) = args
-        startFlashing(installer, uri, action)
-    }
+    fun startFlashing() {
+        val (action, uri, id) = args
+        if (id != -1)
+            Notifications.mgr.cancel(id)
 
-    private fun startFlashing(installer: Uri, uri: Uri?, action: String) {
         viewModelScope.launch {
             val result = when (action) {
                 Const.Value.FLASH_ZIP -> {
-                    FlashZip(installer, outItems, logItems).exec()
+                    FlashZip(uri!!, outItems, logItems).exec()
                 }
                 Const.Value.UNINSTALL -> {
                     showReboot = false
-                    FlashZip.Uninstall(installer, outItems, logItems).exec()
+                    MagiskInstaller.Uninstall(outItems, logItems).exec()
                 }
                 Const.Value.FLASH_MAGISK -> {
-                    MagiskInstaller.Direct(installer, outItems, logItems).exec()
+                    if (Info.isEmulator)
+                        MagiskInstaller.Emulator(outItems, logItems).exec()
+                    else
+                        MagiskInstaller.Direct(outItems, logItems).exec()
                 }
                 Const.Value.FLASH_INACTIVE_SLOT -> {
-                    MagiskInstaller.SecondSlot(installer, outItems, logItems).exec()
+                    MagiskInstaller.SecondSlot(outItems, logItems).exec()
                 }
                 Const.Value.PATCH_FILE -> {
                     uri ?: return@launch
                     showReboot = false
-                    MagiskInstaller.Patch(installer, uri, outItems, logItems).exec()
+                    MagiskInstaller.Patch(uri, outItems, logItems).exec()
                 }
                 else -> {
                     back()

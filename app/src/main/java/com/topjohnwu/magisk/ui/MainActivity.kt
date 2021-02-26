@@ -1,6 +1,7 @@
 package com.topjohnwu.magisk.ui
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
@@ -10,9 +11,7 @@ import android.view.WindowManager
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.view.forEach
-import androidx.core.view.updateLayoutParams
 import androidx.navigation.NavDirections
-import com.google.android.material.card.MaterialCardView
 import com.topjohnwu.magisk.MainDirections
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.arch.BaseUIActivity
@@ -22,13 +21,12 @@ import com.topjohnwu.magisk.core.*
 import com.topjohnwu.magisk.databinding.ActivityMainMd2Binding
 import com.topjohnwu.magisk.ktx.startAnimations
 import com.topjohnwu.magisk.ui.home.HomeFragmentDirections
-import com.topjohnwu.magisk.utils.HideBottomViewOnScrollBehavior
-import com.topjohnwu.magisk.utils.HideTopViewOnScrollBehavior
 import com.topjohnwu.magisk.utils.HideableBehavior
 import com.topjohnwu.magisk.utils.Utils
 import com.topjohnwu.magisk.view.MagiskDialog
 import com.topjohnwu.magisk.view.Shortcuts
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import java.io.File
 
 class MainViewModel : BaseViewModel()
 
@@ -77,12 +75,6 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
 
         setSupportActionBar(binding.mainToolbar)
 
-        binding.mainToolbarWrapper.updateLayoutParams<CoordinatorLayout.LayoutParams> {
-            behavior = HideTopViewOnScrollBehavior<MaterialCardView>()
-        }
-        binding.mainBottomBar.updateLayoutParams<CoordinatorLayout.LayoutParams> {
-            behavior = HideBottomViewOnScrollBehavior<MaterialCardView>()
-        }
         binding.mainNavigation.setOnNavigationItemSelectedListener {
             getScreen(it.itemId)?.navigate()
             true
@@ -91,7 +83,7 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
             (currentFragment as? ReselectionTarget)?.onReselected()
         }
 
-        val section = if (intent.action == ACTION_APPLICATION_PREFERENCES) Const.Nav.SETTINGS
+        val section = if (intent.action == Intent.ACTION_APPLICATION_PREFERENCES) Const.Nav.SETTINGS
         else intent.getStringExtra(Const.Key.OPEN_SECTION)
         getScreen(section)?.navigate()
 
@@ -198,7 +190,37 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
                 .applyTitle(R.string.unsupport_magisk_title)
                 .applyMessage(R.string.unsupport_magisk_msg, Const.Version.MIN_VERSION)
                 .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
-                .cancellable(true)
+                .cancellable(false)
+                .reveal()
+        }
+
+        if (!Info.isEmulator && Info.env.isActive && System.getenv("PATH")
+                ?.split(':')
+                ?.filterNot { File("$it/magisk").exists() }
+                ?.any { File("$it/su").exists() } == true) {
+            MagiskDialog(this)
+                .applyTitle(R.string.unsupport_general_title)
+                .applyMessage(R.string.unsupport_other_su_msg)
+                .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
+                .cancellable(false)
+                .reveal()
+        }
+
+        if (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0) {
+            MagiskDialog(this)
+                .applyTitle(R.string.unsupport_general_title)
+                .applyMessage(R.string.unsupport_system_app_msg)
+                .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
+                .cancellable(false)
+                .reveal()
+        }
+
+        if (applicationInfo.flags and ApplicationInfo.FLAG_EXTERNAL_STORAGE != 0) {
+            MagiskDialog(this)
+                .applyTitle(R.string.unsupport_general_title)
+                .applyMessage(R.string.unsupport_external_storage_msg)
+                .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
+                .cancellable(false)
                 .reveal()
         }
     }
@@ -222,11 +244,4 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
                 .reveal()
         }
     }
-
-    companion object {
-        private val ACTION_APPLICATION_PREFERENCES get() =
-            if (Build.VERSION.SDK_INT >= 24) Intent.ACTION_APPLICATION_PREFERENCES
-            else "???"
-    }
-
 }
